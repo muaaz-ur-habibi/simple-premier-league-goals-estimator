@@ -1,5 +1,8 @@
 import torch.nn as nn
 import torch.optim as optimizer
+from torch import tensor, float32, eye
+
+from sklearn.preprocessing import OneHotEncoder
 
 # for playing with the data
 import pandas as pd
@@ -37,8 +40,6 @@ class DataModel:
                     {
                         'home_team': str(data.loc[i, "Home"]).lower(),
                         'away_team': str(data.loc[i, "Away"]).lower(),
-                        'home_team_coded': self.teamnames_to_digits(str(data.loc[i, "Home"]).lower()),
-                        'away_team_coded': self.teamnames_to_digits(str(data.loc[i, "Away"]).lower()),
                         'home_goals': data.loc[i, "HomeGoals"],
                         'away_goals': data.loc[i, "AwayGoals"],
                         'year': data.loc[i, "Season_End_Year"],
@@ -46,13 +47,31 @@ class DataModel:
                                                                               data.loc[i, "AwayGoals"])
                     }
                 )
+            
+        
+        
+        # one hot encoding labels
+        names = [i['home_team'] for i in cleaned_data]
+        onehot_dict = self.one_hot_encoding_labels(names)
+
+        for i in cleaned_data:
+            for teamname, onehot in onehot_dict.items():
+                if teamname == i['home_team']:
+                    i['home_team_onehot'] = onehot
+                
+                elif teamname == i['away_team']:
+                    i['away_team_onehot'] = onehot
+
+        print(cleaned_data)
+
+        quit()
+
 
         return cleaned_data
     
     def visualize(self):
         data = self.data_extractor()
 
-        #home = [i['home_team'] for i in data]
         sample_home = 'manchester city'
         sample_away = 'leicester city'
         sample_data = []
@@ -68,10 +87,16 @@ class DataModel:
         plot.show()
 
         return sample_data
+    
+    def one_hot_encoding_labels(self, labels:list):
 
+        size = len(labels)
 
-    def teamnames_to_digits(self, teamname):
-        return [ord(char)-7 for char in teamname]
+        vectors = eye(size)
+
+        onehot_dict = {word: vectors[i] for i, word in enumerate(labels)}
+
+        return onehot_dict
 
     
     def scores_to_probabilities(self,
@@ -102,15 +127,17 @@ class EstimatorModel(nn.Module):
         self.output_neurons= nn.Linear(in_features=hidden_neurons, out_features=output_neurons)
 
         # activation functions
-        # trying to use all 3 of these
+        self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
-        self.tanh = nn.Tanh()
-        #self.softmax = nn.functional.softmax()
 
 
-    def forward_sigmoid(self, x):
+    def forward(self, x):
         x = self.input_neurons(x)
+        x = self.relu(x)
+
         x = self.hidden_neurons(x)
+        x = self.relu(x)
+
         x = self.output_neurons(x)
         
         x = self.sigmoid(x)
@@ -133,8 +160,9 @@ model = EstimatorModel(input_neurons=inputs,
                        hidden_neurons=hiddens,
                        output_neurons=outputs)
 
-criterion = nn.MSELoss()
+loss_func = nn.MSELoss()
 optim = optimizer.Adam(params=model.parameters(), lr=0.002)
+
 
 for e in range(epochs):
     # iterate over the batch size
@@ -153,12 +181,23 @@ for e in range(epochs):
         scores = []
 
         for i in range(len(home_teams)):
+            #teams.append(tensor([home_teams[i], away_teams[i]], dtype=float32))
             teams.append([home_teams[i], away_teams[i]])
 
+            #scores.append(tensor([home_goal[i], away_goal[i]], dtype=float32))
             scores.append([home_goal[i], away_goal[i]])
-        
-        #prediction = model()
 
-        print(teams)
+        
+        for i in teams:
+            print(teams)
 
         quit()
+        
+        prediction = model(teams)
+        loss = loss_func(prediction, scores)
+
+        optim.zero_grad()
+        loss.backward()
+        optim.step()
+
+    print(f"Epochs finished: {e}/{epochs}")
