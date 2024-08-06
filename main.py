@@ -64,9 +64,6 @@ class DataModel:
 
         print(cleaned_data)
 
-        quit()
-
-
         return cleaned_data
     
     def visualize(self):
@@ -167,9 +164,9 @@ optim = optimizer.Adam(params=model.parameters(), lr=0.002)
 for e in range(epochs):
     # iterate over the batch size
     for b in range(0, len(cleaned_data), batch_size):
-        home_teams = [i['home_team_coded'] for i in cleaned_data]
+        home_teams = [i['home_team_onehot'] for i in cleaned_data]
         home_teams = home_teams[b: batch_size+1]
-        away_teams = [i['away_team_coded'] for i in cleaned_data]
+        away_teams = [i['away_team_onehot'] for i in cleaned_data]
         away_teams = away_teams[b: batch_size+1]
 
         home_goal = [i['home_goals'] for i in cleaned_data]
