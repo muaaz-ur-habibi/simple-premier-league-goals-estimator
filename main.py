@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.optim as optimizer
-from torch import tensor, float32, eye, stack, cat
+from torch import tensor, float32, eye, stack, cat, set_printoptions
 
 from sklearn.preprocessing import OneHotEncoder
 
@@ -156,7 +156,7 @@ output_data = tensor(np.column_stack(output_data), dtype=float32)
 inputs = 2
 hiddens = 10
 outputs = 2
-epochs = 11
+epochs = 10
 batch_size = 5
 
 
@@ -168,15 +168,18 @@ model = EstimatorModel(input_neurons=inputs,
 loss_func = nn.MSELoss()
 optim = optimizer.Adam(params=model.parameters(), lr=0.002)
 
-
+set_printoptions(profile='full')
 for e in range(epochs):
     # iterate over the batch size
     for b in range(0, len(cleaned_data), batch_size):
         input_data_batch = input_data[b: b+batch_size]
         output_data_batch = output_data[b: b+batch_size]
 
-        print(input_data_batch)
-        print(output_data_batch)
+        input_data_batch.to(model.input_neurons.weight.dtype)
+        output_data_batch.to(model.output_neurons.weight.dtype)
+
+        print(input_data_batch.shape)
+        print(output_data_batch.shape)
 
         prediction = model(input_data_batch)
         loss = loss_func(prediction, output_data_batch)
