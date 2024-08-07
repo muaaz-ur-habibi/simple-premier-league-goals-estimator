@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.optim as optimizer
-from torch import tensor, float32, eye
+from torch import tensor, float32, eye, stack, cat
 
 from sklearn.preprocessing import OneHotEncoder
 
@@ -59,10 +59,9 @@ class DataModel:
                 if teamname == i['home_team']:
                     i['home_team_onehot'] = onehot
                 
-                elif teamname == i['away_team']:
+                if teamname == i['away_team']:
                     i['away_team_onehot'] = onehot
-
-        print(cleaned_data)
+        
 
         return cleaned_data
     
@@ -88,9 +87,7 @@ class DataModel:
     def one_hot_encoding_labels(self, labels:list):
 
         size = len(labels)
-
         vectors = eye(size)
-
         onehot_dict = {word: vectors[i] for i, word in enumerate(labels)}
 
         return onehot_dict
@@ -99,6 +96,7 @@ class DataModel:
     def scores_to_probabilities(self,
                                 home_score:int,
                                 away_score:int):
+        np.seterr(divide='ignore', invalid='ignore')
         
         total = home_score + away_score
 
@@ -149,7 +147,7 @@ inputs = 2
 hiddens = 10
 outputs = 2
 epochs = 11
-batch_size = 5
+batch_size = 4
 
 
 # creating the model, criterion and optimimzers
@@ -178,17 +176,29 @@ for e in range(epochs):
         scores = []
 
         for i in range(len(home_teams)):
-            #teams.append(tensor([home_teams[i], away_teams[i]], dtype=float32))
-            teams.append([home_teams[i], away_teams[i]])
-
-            #scores.append(tensor([home_goal[i], away_goal[i]], dtype=float32))
-            scores.append([home_goal[i], away_goal[i]])
-
+            team1 = tensor(home_teams[i], dtype=float32)
+            team2 = tensor(away_teams[i], dtype=float32)
+            teams.append(
+                stack((team1, team2))
+                )
+            
+            score1 = tensor(home_goal[i], dtype=float32)
+            score2 = tensor(away_goal[i], dtype=float32)
+            scores.append(
+                stack((score1, score2))
+                )
         
-        for i in teams:
-            print(teams)
+        teams = cat(teams, dim=1)
+        scores = cat(scores, dim=0)
 
-        quit()
+        print(teams.shape)
+        print(scores.shape)
+
+        teams = tensor(teams, dtype=float32)
+        scores = tensor(scores, dtype=float32)
+
+        print(teams.shape)
+        print(scores.shape)
         
         prediction = model(teams)
         loss = loss_func(prediction, scores)
@@ -197,4 +207,6 @@ for e in range(epochs):
         loss.backward()
         optim.step()
 
-    print(f"Epochs finished: {e}/{epochs}")
+        print(f"[INFO] Batch {b} completed")
+
+    print(f"[INFO] Epochs finished: {e}/{epochs}")
