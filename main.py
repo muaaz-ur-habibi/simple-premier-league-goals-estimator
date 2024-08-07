@@ -141,13 +141,23 @@ class EstimatorModel(nn.Module):
 
 cleaned_data = DataModel('data/premier-league-matches.csv').data_extractor()
 
+input_data = []
+output_data =[]
+
+for i in range(len(cleaned_data)):
+    input_data.append((cleaned_data[i]['home_team_onehot'], cleaned_data[i]['away_team_onehot']))
+    output_data.append((tensor(cleaned_data[i]['home_goals']), tensor(cleaned_data[i]['away_goals'])))
+
+input_data = tensor(np.column_stack(input_data), dtype=float32)
+output_data = tensor(np.column_stack(output_data), dtype=float32)
+
 
 # setting model parameters
 inputs = 2
 hiddens = 10
 outputs = 2
 epochs = 11
-batch_size = 4
+batch_size = 5
 
 
 # creating the model, criterion and optimimzers
@@ -162,47 +172,14 @@ optim = optimizer.Adam(params=model.parameters(), lr=0.002)
 for e in range(epochs):
     # iterate over the batch size
     for b in range(0, len(cleaned_data), batch_size):
-        home_teams = [i['home_team_onehot'] for i in cleaned_data]
-        home_teams = home_teams[b: batch_size+1]
-        away_teams = [i['away_team_onehot'] for i in cleaned_data]
-        away_teams = away_teams[b: batch_size+1]
+        input_data_batch = input_data[b: b+batch_size]
+        output_data_batch = output_data[b: b+batch_size]
 
-        home_goal = [i['home_goals'] for i in cleaned_data]
-        home_goal = home_goal[b: batch_size+1]
-        away_goal = [i['away_goals'] for i in cleaned_data]
-        away_goal = away_goal[b: batch_size+1]
+        print(input_data_batch)
+        print(output_data_batch)
 
-        teams = []
-        scores = []
-
-        for i in range(len(home_teams)):
-            team1 = tensor(home_teams[i], dtype=float32)
-            team2 = tensor(away_teams[i], dtype=float32)
-            teams.append(
-                stack((team1, team2))
-                )
-            
-            score1 = tensor(home_goal[i], dtype=float32)
-            score2 = tensor(away_goal[i], dtype=float32)
-            scores.append(
-                stack((score1, score2))
-                )
-        print(len(teams))
-        
-        teams = cat(teams, dim=1)
-        scores = cat(scores, dim=0)
-
-        print(teams.shape)
-        print(scores.shape)
-
-        teams = tensor(teams, dtype=float32)
-        scores = tensor(scores, dtype=float32)
-
-        print(teams.shape)
-        print(scores.shape)
-        
-        prediction = model(teams)
-        loss = loss_func(prediction, scores)
+        prediction = model(input_data_batch)
+        loss = loss_func(prediction, output_data_batch)
 
         optim.zero_grad()
         loss.backward()
