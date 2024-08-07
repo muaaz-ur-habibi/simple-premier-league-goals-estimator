@@ -187,6 +187,7 @@ for e in range(epochs):
             scores.append(
                 stack((score1, score2))
                 )
+        print(len(teams))
         
         teams = cat(teams, dim=1)
         scores = cat(scores, dim=0)
