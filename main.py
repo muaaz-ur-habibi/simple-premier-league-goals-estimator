@@ -2,14 +2,11 @@ import torch.nn as nn
 import torch.optim as optimizer
 from torch import tensor, eye, stack, no_grad, save
 
-from sklearn.preprocessing import OneHotEncoder
-
 # for playing with the data
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plot
 
-import random as rd
 
 import math
 
@@ -47,8 +44,8 @@ class DataModel:
                                                                       data.loc[i, "AwayGoals"])
                     }
                 )
-            
-        
+
+
         # one hot encoding labels
         names = [i['home_team'] for i in cleaned_data]
         onehot_dict = self.one_hot_encoding_labels(names)
@@ -78,6 +75,7 @@ class DataModel:
         x = [i[3] for i in sample_data]
         y = [i[0] for i in sample_data]
 
+        plot.title(f"{sample_home}'s goals against {sample_away}")
         plot.plot(x, y, color='red', marker='s')
         plot.show()
 
@@ -136,7 +134,7 @@ class EstimatorModel(nn.Module):
         x = self.relu(x)
 
         x = self.output_neurons(x)
-        
+
         x = self.relu(x)
         return x
 
@@ -190,7 +188,7 @@ for e in range(epochs):
         # comment this print statement if you dislike too much verbosity
         #print(f"[INFO] {x+1} pair completed. Loss: {loss}")
 
-    print(f"[INFO] Epochs finished: {e+1}/{epochs}")
+    print(f"[INFO] Epochs finished: {e+1}/{epochs}. Loss: {loss}")
 
 print("[INFO] Saving the model")
 # save the trained model
