@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.optim as optimizer
-from torch import tensor, float32, eye, stack, cat, set_printoptions
+from torch import tensor, eye, stack, no_grad, save
 
 from sklearn.preprocessing import OneHotEncoder
 
@@ -44,11 +44,10 @@ class DataModel:
                         'away_goals': data.loc[i, "AwayGoals"],
                         'year': data.loc[i, "Season_End_Year"],
                         'probabilities': self.scores_to_probabilities(data.loc[i, "HomeGoals"],
-                                                                              data.loc[i, "AwayGoals"])
+                                                                      data.loc[i, "AwayGoals"])
                     }
                 )
             
-        
         
         # one hot encoding labels
         names = [i['home_team'] for i in cleaned_data]
@@ -133,61 +132,87 @@ class EstimatorModel(nn.Module):
         x = self.hidden_neurons(x)
         x = self.relu(x)
 
+        x = self.hidden_neurons(x)
+        x = self.relu(x)
+
         x = self.output_neurons(x)
         
-        x = self.sigmoid(x)
+        x = self.relu(x)
         return x
 
-
-cleaned_data = DataModel('data/premier-league-matches.csv').data_extractor()
+print("[INFO] Creating data for training")
+data = DataModel('data/premier-league-matches.csv')
+cleaned_data = data.data_extractor()
 
 input_data = []
 output_data =[]
 
+print("[INFO] Further cleaning and processing data")
 for i in range(len(cleaned_data)):
     input_data.append((cleaned_data[i]['home_team_onehot'], cleaned_data[i]['away_team_onehot']))
-    output_data.append((tensor(cleaned_data[i]['home_goals']), tensor(cleaned_data[i]['away_goals'])))
-
-input_data = tensor(np.column_stack(input_data), dtype=float32)
-output_data = tensor(np.column_stack(output_data), dtype=float32)
+    output_data.append((tensor([cleaned_data[i]['home_goals']]), tensor([cleaned_data[i]['away_goals']])))
 
 
+print("[INFO] Setting model parameters")
 # setting model parameters
-inputs = 2
-hiddens = 10
-outputs = 2
+input_size = 12026
+hidden_size = 10
+output_size = 1
 epochs = 10
 batch_size = 5
 
 
+print("[INFO] Creating the model, loss function and optimizer")
 # creating the model, criterion and optimimzers
-model = EstimatorModel(input_neurons=inputs,
-                       hidden_neurons=hiddens,
-                       output_neurons=outputs)
+model = EstimatorModel(input_neurons=input_size,
+                       hidden_neurons=hidden_size,
+                       output_neurons=output_size)
 
 loss_func = nn.MSELoss()
 optim = optimizer.Adam(params=model.parameters(), lr=0.002)
 
-set_printoptions(profile='full')
+print("[INFO] Starting training loop")
 for e in range(epochs):
-    # iterate over the batch size
-    for b in range(0, len(cleaned_data), batch_size):
-        input_data_batch = input_data[b: b+batch_size]
-        output_data_batch = output_data[b: b+batch_size]
+    x=0
+    for inputs, outputs in zip(input_data, output_data):
+        inputs = stack(inputs)
+        outputs = stack(outputs)
 
-        input_data_batch.to(model.input_neurons.weight.dtype)
-        output_data_batch.to(model.output_neurons.weight.dtype)
+        prediction = model(inputs)
 
-        print(input_data_batch.shape)
-        print(output_data_batch.shape)
-
-        prediction = model(input_data_batch)
-        loss = loss_func(prediction, output_data_batch)
+        loss = loss_func(prediction, outputs.float())
 
         optim.zero_grad()
         loss.backward()
         optim.step()
 
-        print(f"[INFO] Batch {b} completed")
+        x+=1
+        # comment this print statement if you dislike too much verbosity
+        #print(f"[INFO] {x+1} pair completed. Loss: {loss}")
 
-    print(f"[INFO] Epochs finished: {e}/{epochs}")
+    print(f"[INFO] Epochs finished: {e+1}/{epochs}")
+
+print("[INFO] Saving the model")
+# save the trained model
+save(obj=model, f='models/predictor.pt')
+
+print("[INFO] Evaluating the model")
+# the evaluation part
+model.eval()
+
+while True:
+    team1, team2 = str(input("Enter two team names, seperated by a space: ")).split(" ")
+
+    for dic in cleaned_data:
+        if dic['home_team'] == team1:
+            team1 = dic['home_team_onehot']
+        
+        elif dic['away_team'] == team2:
+            team2 = dic['away_team_onehot']
+
+    inp = stack((team1, team2))
+
+    with no_grad():
+        prediction = model(inp)
+
+    print(prediction)
