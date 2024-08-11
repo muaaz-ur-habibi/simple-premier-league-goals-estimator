@@ -44,7 +44,10 @@ class DataModel:
                                                                       data.loc[i, "AwayGoals"])
                     }
                 )
-
+        # training till 2022 year so that we can
+        # evaluate it for the 2023 year
+        # NOTE: comment this line out when you have evaluated it and are satisfied with the results
+        cleaned_data = cleaned_data[:11646]
 
         # one hot encoding labels
         names = [i['home_team'] for i in cleaned_data]
@@ -153,10 +156,12 @@ for i in range(len(cleaned_data)):
 
 print("[INFO] Setting model parameters")
 # setting model parameters
-input_size = 12026
-hidden_size = 10
+# NOTE: input_size should be same as however many rows
+# of the csv file you are training the model on
+input_size = 11646
+hidden_size = 25
 output_size = 1
-epochs = 10
+epochs = 20
 batch_size = 5
 
 
@@ -167,28 +172,32 @@ model = EstimatorModel(input_neurons=input_size,
                        output_neurons=output_size)
 
 loss_func = nn.MSELoss()
-optim = optimizer.Adam(params=model.parameters(), lr=0.002)
+optim = optimizer.Adam(params=model.parameters(), lr=0.007)
 
 print("[INFO] Starting training loop")
-for e in range(epochs):
-    x=0
-    for inputs, outputs in zip(input_data, output_data):
-        inputs = stack(inputs)
-        outputs = stack(outputs)
 
-        prediction = model(inputs)
+try:
+    for e in range(epochs):
+        x=0
+        for inputs, outputs in zip(input_data, output_data):
+            inputs = stack(inputs)
+            outputs = stack(outputs)
 
-        loss = loss_func(prediction, outputs.float())
+            prediction = model(inputs)
 
-        optim.zero_grad()
-        loss.backward()
-        optim.step()
+            loss = loss_func(prediction, outputs.float())
 
-        x+=1
-        # comment this print statement if you dislike too much verbosity
-        #print(f"[INFO] {x+1} pair completed. Loss: {loss}")
+            optim.zero_grad()
+            loss.backward()
+            optim.step()
 
-    print(f"[INFO] Epochs finished: {e+1}/{epochs}. Loss: {loss}")
+            x+=1
+            # comment this print statement if you dislike too much verbosity
+            #print(f"[INFO] {x+1} pair completed. Loss: {loss}")
+
+        print(f"[TRAINING] Epochs finished: {e+1}/{epochs}. Loss: {loss}")
+except KeyboardInterrupt:
+    pass
 
 print("[INFO] Saving the model")
 # save the trained model
